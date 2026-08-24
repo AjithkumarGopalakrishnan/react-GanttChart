@@ -185,13 +185,13 @@ const Virtualscroll = () => {
                         <option value="75000">75K</option>
                         <option value="100000">100K</option>
                     </select>
-                    {selectedDataset && (
+                    {selectedDataset && !loading && data.length > 0 && (
                         <span className="current-selection" aria-live="polite">
-                            Showing:&nbsp;
+                            Loaded:&nbsp;
                             <strong>
-                                {selectedDataset === '50000' && '50,000'}
-                                {selectedDataset === '75000' && '75,000'}
-                                {selectedDataset === '100000' && '100,000'}
+                                {(
+                                    data.length
+                                ).toLocaleString('en-IN')}
                             </strong>
                             &nbsp;records
                         </span>
