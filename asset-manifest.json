@@ -1,10 +1,10 @@
 {
   "files": {
-    "main.js": "/react-GanttChart/static/js/main.314880b9.js",
+    "main.js": "/react-GanttChart/static/js/main.54f870ea.js",
     "index.html": "/react-GanttChart/index.html",
-    "main.314880b9.js.map": "/react-GanttChart/static/js/main.314880b9.js.map"
+    "main.54f870ea.js.map": "/react-GanttChart/static/js/main.54f870ea.js.map"
   },
   "entrypoints": [
-    "static/js/main.314880b9.js"
+    "static/js/main.54f870ea.js"
   ]
 }
