@@ -115,11 +115,10 @@ const Virtualscroll = () => {
         }
 
         setLoading(true);
-        setSelectedDataset(
-            count === 50000 ? '50K' :
-                count === 75000 ? '75K' :
-                    '100K'
-        );
+        // Store the value the same way the <option value="..."> attribute
+        // is written, so the controlled <select> stays on the chosen item
+        // after the dataset is loaded.
+        setSelectedDataset(String(count));
         setStatusText('⏳ Loading...');
 
         // Start clock right BEFORE the heavy work and remount.
@@ -170,19 +169,33 @@ const Virtualscroll = () => {
     return (
         <div className='control-pane'>
             <div className="status-bar">
-                <span>
-                    Dataset:
+                <span className="dataset-control">
+                    <label htmlFor="dataset-select">Dataset:</label>
                     <select
+                        id="dataset-select"
                         className="record-dropdown"
                         value={selectedDataset}
                         disabled={loading}
                         onChange={(e) => loadData(Number(e.target.value))}
                     >
-                        <option value="">Select</option>
+                        <option value="" disabled>
+                            {selectedDataset ? 'Change…' : 'Select'}
+                        </option>
                         <option value="50000">50K</option>
                         <option value="75000">75K</option>
                         <option value="100000">100K</option>
                     </select>
+                    {selectedDataset && (
+                        <span className="current-selection" aria-live="polite">
+                            Showing:&nbsp;
+                            <strong>
+                                {selectedDataset === '50000' && '50,000'}
+                                {selectedDataset === '75000' && '75,000'}
+                                {selectedDataset === '100000' && '100,000'}
+                            </strong>
+                            &nbsp;records
+                        </span>
+                    )}
                 </span>
                 <span>
                     <label className="validation-toggle">
