@@ -1,6 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import * as React from 'react';
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     GanttComponent,
     Inject,
@@ -14,11 +14,14 @@ import {
 const Virtualscroll = () => {
 
     const [data, setData] = useState([]);
-    const startTime = useRef(0);
     const [loading, setLoading] = useState(false);
     const [selectedDataset, setSelectedDataset] = useState('');
     const [enableValidation, setEnableValidation] = useState(false);
-    const outputRef = useRef(null);
+    const [statusText, setStatusText] = useState('0.000 sec');
+    const [renderKey, setRenderKey] = useState(0);
+
+    const startTime = useRef(0);
+    const ganttRef = useRef(null);
 
     const taskFields = {
         id: 'TaskID',
@@ -104,6 +107,12 @@ const Virtualscroll = () => {
     };
 
     const loadData = (count) => {
+        if (!count) {
+            return;
+        }
+        if (loading) {
+            return; // ignore re-entrant picks while loading
+        }
 
         setLoading(true);
         setSelectedDataset(
@@ -111,15 +120,38 @@ const Virtualscroll = () => {
                 count === 75000 ? '75K' :
                     '100K'
         );
+        setStatusText('⏳ Loading...');
 
+        // Start clock right BEFORE the heavy work and remount.
         startTime.current = performance.now();
 
-        const generated = generateVirtualData(count);
-        if (outputRef.current) {
-            outputRef.current.innerHTML = '';
-        }
-        setData(generated);
+        // Defer the heavy work to the next tick so React can paint
+        // the disabled-dropdown / loading state first.
+        window.setTimeout(() => {
+            const generated = generateVirtualData(count);
+            setData(generated);
+            // Force a remount so VirtualScroll rebuilds cleanly. This also
+            // eliminates the "shimmer sticks" issue when dataSource changes
+            // from [] -> large dataset with virtualization enabled.
+            setRenderKey((k) => k + 1);
+        }, 0);
     };
+
+    // Safety net: if for any reason `dataBound` does not fire (it can
+    // skip when re-rendering with an empty -> populated dataSource),
+    // force-clear the loading state after 5 seconds.
+    useEffect(() => {
+        if (!loading) {
+            return;
+        }
+        const t = window.setTimeout(() => {
+            setLoading(false);
+            setStatusText((prev) =>
+                prev.startsWith('⏳') ? '0.000 sec' : prev
+            );
+        }, 5000);
+        return () => window.clearTimeout(t);
+    }, [loading, data]);
 
     const onDataBound = () => {
 
@@ -130,15 +162,10 @@ const Virtualscroll = () => {
         const totalTime =
             ((performance.now() - startTime.current) / 1000).toFixed(3);
 
-        if (outputRef.current) {
-            outputRef.current.innerHTML = `✅ Loaded ${totalTime} sec`;
-        }
-
+        setStatusText(`✅ Loaded ${totalTime} sec`);
         setLoading(false);
         startTime.current = 0;
     };
-
-    let ganttInstance = null;
 
     return (
         <div className='control-pane'>
@@ -147,6 +174,8 @@ const Virtualscroll = () => {
                     Dataset:
                     <select
                         className="record-dropdown"
+                        value={selectedDataset}
+                        disabled={loading}
                         onChange={(e) => loadData(Number(e.target.value))}
                     >
                         <option value="">Select</option>
@@ -165,13 +194,14 @@ const Virtualscroll = () => {
                         {' '}Auto Validation
                     </label>
                 </span>
-                <span>
-                    {loading ? '⏳ Loading...' : ''}
+                <span className="status-text">
+                    {statusText}
                 </span>
-                <span id="output" ref={outputRef}>0.000 sec</span>
             </div>
 
             <GanttComponent
+                ref={ganttRef}
+                key={`gantt-${renderKey}-${enableValidation ? 'val-on' : 'val-off'}`}
                 id='VirtualScroll'
                 dataSource={data}
                 treeColumnIndex={1}
@@ -179,9 +209,10 @@ const Virtualscroll = () => {
                 enableTimelineVirtualization={true}
                 taskFields={taskFields}
                 height='650px'
-                key={enableValidation ? 'val-on' : 'val-off'}
                 dataBound={onDataBound}
                 autoCalculateDateScheduling={enableValidation}
+                loadingIndicator={{ indicatorType: 'Shimmer' }}
+                spinnerSettings={{ showSpinner: true }}
             >
                 <ColumnsDirective>
                     <ColumnDirective field='TaskID' width='100' />
